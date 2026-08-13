@@ -51,5 +51,4 @@ describe Page do
 
     expect(page.reload.filename).to eq("renamed.xml")
   end
-
 end
