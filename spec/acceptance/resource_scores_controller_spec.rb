@@ -119,6 +119,16 @@ resource "ResourceScores" do
         end
       end
     end
+
+    context "with invalid language" do
+      it "returns an error" do
+        do_request lang: "invalid"
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found")
+      end
+    end
   end
 
   post "resource_scores" do
@@ -186,6 +196,18 @@ resource "ResourceScores" do
         expect(json).to have_key("errors")
       end
     end
+
+    context "with an invalid language" do
+      it "returns an error" do
+        request_params = valid_params.deep_merge(
+          data: {attributes: {lang: "invalid"}}
+        )
+
+        do_request(request_params)
+
+        expect(status).to be(422)
+      end
+    end
   end
 
   delete "resource_scores/:id" do
@@ -213,6 +235,24 @@ resource "ResourceScores" do
         do_request
 
         expect(status).to be(404)
+      end
+    end
+
+    context "when the resource score cannot be destroyed" do
+      before do
+        allow(ResourceScore).to receive(:find).and_return(resource_score)
+        allow(resource_score).to receive(:destroy!).and_raise(
+          ActiveRecord::RecordNotDestroyed.new(
+            "Could not destroy resource score",
+            resource_score
+          )
+        )
+      end
+
+      it "returns an error" do
+        do_request
+
+        expect(status).to be(422)
       end
     end
   end
@@ -283,6 +323,19 @@ resource "ResourceScores" do
       end
     end
 
+    context "with an invalid language" do
+      it "returns an error" do
+        do_request(
+          data: {
+            type: "resource_score",
+            attributes: {lang: "invalid"}
+          }
+        )
+
+        expect(status).to be(422)
+      end
+    end
+
     context "when an incorrect ID is sent" do
       let(:id) { "unknownId" }
 
@@ -307,7 +360,7 @@ resource "ResourceScores" do
                            resource_type: resource_type&.name}}}
     end
 
-    context "with no country and lang params" do
+    context "with no country or lang" do
       let(:country) { nil }
       let(:lang) { nil }
 
@@ -330,10 +383,10 @@ resource "ResourceScores" do
       end
     end
 
-    context "with no country, lang, and resource_type params" do
+    context "with no country, lang, or resource_type" do
       let(:country) { nil }
       let(:lang) { nil }
-      let(:resource_type_attr) { nil }
+      let(:resource_type) { nil }
 
       context "when sending an empty array" do
         it "returns an error" do
@@ -354,7 +407,7 @@ resource "ResourceScores" do
       end
     end
 
-    context "with no resource_type param" do
+    context "with no resource_type" do
       let(:resource_type) { nil }
 
       context "when sending an empty array" do
@@ -380,7 +433,7 @@ resource "ResourceScores" do
       end
     end
 
-    context "with invalid resource_type param" do
+    context "with unsupported resource_type" do
       let(:resource_type) { ResourceType.find_by!(name: "article") }
       it "returns an error" do
         do_request(params)
@@ -391,7 +444,109 @@ resource "ResourceScores" do
       end
     end
 
-    context "with country and lang params" do
+    context "with invalid language" do
+      let(:lang) { "invalid" }
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found for code: invalid")
+      end
+    end
+
+    context "with invalid resource_type" do
+      let(:params) do
+        {
+          data: {
+            attributes: {
+              country: country,
+              lang: lang,
+              resource_ids: resource_ids,
+              resource_type: "invalid_type"
+            }
+          }
+        }
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("ResourceType 'invalid_type' not found")
+      end
+    end
+
+    context "when sending too many resource ids" do
+      let(:resource_ids) do
+        (1..(ResourceScore::MAX_FEATURED_ORDER_POSITION + 1)).to_a
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+
+        json = JSON.parse(response_body)
+        expect(json["errors"][0]["detail"])
+          .to include("maximum of #{ResourceScore::MAX_FEATURED_ORDER_POSITION}")
+      end
+    end
+
+    context "when creating a resource score fails validation" do
+      let(:resource_ids) { [resource.id] }
+
+      before do
+        invalid_score = ResourceScore.new
+        invalid_score.errors.add(:base, "Forced validation failure")
+
+        allow(ResourceScore)
+          .to receive(:create!)
+          .and_raise(ActiveRecord::RecordInvalid.new(invalid_score))
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+      end
+    end
+
+    context "when removing a resource score fails" do
+      let(:resource_ids) { [] }
+
+      let!(:existing_score) do
+        ResourceScore.create!(
+          resource: resource,
+          country: "us",
+          language: language_en,
+          featured: true,
+          featured_order: 1,
+          score: nil
+        )
+      end
+
+      before do
+        allow_any_instance_of(ResourceScore)
+          .to receive(:destroy!)
+          .and_raise(
+            ActiveRecord::RecordNotDestroyed.new(
+              "Could not destroy resource score",
+              existing_score
+            )
+          )
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+      end
+    end
+
+    context "with country and lang" do
       context "with no previous resource score" do
         context "when sending an empty array" do
           it "returns an empty array" do
@@ -639,7 +794,7 @@ resource "ResourceScores" do
                            resource_type: resource_type&.name}}}
     end
 
-    context "with no country and lang params" do
+    context "with no country or lang" do
       let(:country) { nil }
       let(:lang) { nil }
 
@@ -662,7 +817,7 @@ resource "ResourceScores" do
       end
     end
 
-    context "with no resource_type param" do
+    context "with no resource_type" do
       let(:resource_type) { nil }
 
       context "when sending an empty array" do
@@ -688,7 +843,7 @@ resource "ResourceScores" do
       end
     end
 
-    context "with invalid resource_type param" do
+    context "with unsupported resource_type" do
       let(:resource_type) { ResourceType.find_by!(name: "article") }
 
       it "returns an error" do
@@ -700,7 +855,95 @@ resource "ResourceScores" do
       end
     end
 
-    context "with country and lang params" do
+    context "with invalid language" do
+      let(:lang) { "invalid" }
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found for code: invalid")
+      end
+    end
+
+    context "with invalid resource_type" do
+      let(:params) do
+        {
+          data: {
+            attributes: {
+              country: country,
+              lang: lang,
+              ranked_resources: ranked_resources,
+              resource_type: "invalid_type"
+            }
+          }
+        }
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("ResourceType 'invalid_type' not found")
+      end
+    end
+
+    context "when creating a ranked resource score fails validation" do
+      let(:ranked_resources) do
+        [{resource_id: resource.id, score: 10}]
+      end
+
+      before do
+        invalid_score = ResourceScore.new
+        invalid_score.errors.add(:base, "Forced validation failure")
+
+        allow(ResourceScore)
+          .to receive(:create!)
+          .and_raise(ActiveRecord::RecordInvalid.new(invalid_score))
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+      end
+    end
+
+    context "when removing a resource score fails" do
+      let(:ranked_resources) { [] }
+
+      let!(:existing_score) do
+        ResourceScore.create!(
+          resource: resource,
+          country: "us",
+          language: language_en,
+          featured: false,
+          featured_order: nil,
+          score: 10
+        )
+      end
+
+      before do
+        allow_any_instance_of(ResourceScore)
+          .to receive(:destroy!)
+          .and_raise(
+            ActiveRecord::RecordNotDestroyed.new(
+              "Could not destroy resource score",
+              existing_score
+            )
+          )
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+      end
+    end
+
+    context "with country and lang" do
       context "with no previous resource scores" do
         context "when sending an empty array" do
           it "returns an empty array" do

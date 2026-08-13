@@ -173,6 +173,24 @@ resource "ResourceDefaultOrders" do
         expect(json).to have_key("errors")
       end
     end
+
+    context "with an invalid language" do
+      it "returns an error" do
+        request_params = valid_params.deep_merge(
+          data: {
+            attributes: {
+              lang: "invalid"
+            }
+          }
+        )
+
+        do_request(request_params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found")
+      end
+    end
   end
 
   delete "resource_default_orders/:id" do
@@ -197,6 +215,29 @@ resource "ResourceDefaultOrders" do
         do_request
 
         expect(status).to be(404)
+      end
+    end
+
+    context "when the resource default order cannot be destroyed" do
+      before do
+        allow(ResourceDefaultOrder)
+          .to receive(:find)
+          .and_return(resource_default_order)
+
+        allow(resource_default_order)
+          .to receive(:destroy!)
+          .and_raise(
+            ActiveRecord::RecordNotDestroyed.new(
+              "Could not destroy resource default order",
+              resource_default_order
+            )
+          )
+      end
+
+      it "returns an error" do
+        do_request
+
+        expect(status).to be(422)
       end
     end
   end
@@ -240,6 +281,24 @@ resource "ResourceDefaultOrders" do
       end
     end
 
+    context "with an invalid language" do
+      it "returns an error" do
+        request_params = valid_update_params.deep_merge(
+          data: {
+            attributes: {
+              lang: "invalid"
+            }
+          }
+        )
+
+        do_request(request_params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found")
+      end
+    end
+
     context "when an incorrect ID is sent" do
       let(:id) { "unknownId" }
 
@@ -261,7 +320,7 @@ resource "ResourceDefaultOrders" do
       {data: {attributes: {lang: lang, resource_ids: resource_ids, resource_type: resource_type&.name}}}
     end
 
-    context "with no lang param" do
+    context "with no language" do
       let(:lang) { nil }
 
       context "when sending an empty array" do
@@ -287,7 +346,7 @@ resource "ResourceDefaultOrders" do
       end
     end
 
-    context "with no resource_type param" do
+    context "with no resource_type" do
       let(:resource_type) { nil }
 
       context "when sending an empty array" do
@@ -313,7 +372,7 @@ resource "ResourceDefaultOrders" do
       end
     end
 
-    context "with invalid resource_type param" do
+    context "with unsupported resource_type" do
       let(:resource_type) { ResourceType.find_by!(name: "article") }
       it "returns an error" do
         do_request(params)
@@ -321,6 +380,56 @@ resource "ResourceDefaultOrders" do
         expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"][0]["detail"]).to include("is not supported")
+      end
+    end
+
+    context "with invalid language" do
+      let(:lang) { "invalid_lang" }
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("Language not found for code: invalid_lang")
+      end
+    end
+
+    context "with invalid resource_type" do
+      let(:params) do
+        {
+          data: {
+            attributes: {
+              lang: lang,
+              resource_ids: resource_ids,
+              resource_type: "invalid_type"
+            }
+          }
+        }
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include("ResourceType 'invalid_type' not found")
+      end
+    end
+
+    context "when sending too many resource ids" do
+      let(:resource_ids) do
+        (1..(ResourceDefaultOrder::MAX_DEFAULT_ORDER_POSITION + 1)).to_a
+      end
+
+      it "returns an error" do
+        do_request(params)
+
+        expect(status).to be(422)
+        expect(JSON.parse(response_body)["errors"][0]["detail"])
+          .to include(
+            "maximum of #{ResourceDefaultOrder::MAX_DEFAULT_ORDER_POSITION}"
+          )
       end
     end
 
@@ -400,6 +509,27 @@ resource "ResourceDefaultOrders" do
               json = JSON.parse(response_body)
               expect(json["errors"][0]["detail"]).to include("Resources not found or do not match the provided resource type")
             end
+          end
+        end
+
+        context "when creating a resource default order fails validation" do
+          let(:resource_ids) { [resource.id] }
+
+          before do
+            invalid_order = ResourceDefaultOrder.new
+            invalid_order.errors.add(:base, "Forced validation failure")
+
+            allow(ResourceDefaultOrder)
+              .to receive(:create!)
+              .and_raise(
+                ActiveRecord::RecordInvalid.new(invalid_order)
+              )
+          end
+
+          it "returns an error" do
+            do_request(params)
+
+            expect(status).to be(422)
           end
         end
       end
@@ -507,6 +637,27 @@ resource "ResourceDefaultOrders" do
             expect(json["data"][0]["attributes"]["position"]).to eq(1)
             expect(ResourceDefaultOrder.exists?(resource_default_order.id)).to be false
             expect(ResourceDefaultOrder.exists?(resource_default_order3.id)).to be false
+          end
+        end
+
+        context "when removing a resource default order fails" do
+          let(:resource_ids) { [resource.id] }
+
+          before do
+            allow_any_instance_of(ResourceDefaultOrder)
+              .to receive(:destroy!)
+              .and_raise(
+                ActiveRecord::RecordNotDestroyed.new(
+                  "Could not destroy resource default order",
+                  resource_default_order2
+                )
+              )
+          end
+
+          it "returns an error" do
+            do_request(params)
+
+            expect(status).to be(422)
           end
         end
       end
