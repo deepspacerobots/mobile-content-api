@@ -10,10 +10,7 @@ class ResourcesPersonalizationController < ApplicationController
     lang_code = params.dig(:filter, :lang)
     country = params.dig(:filter, :country)
 
-    unless lang_code.present? && country.present?
-      return render json: {errors: [{detail: "Error: Language and Country Filters are required."}]},
-        status: :bad_request
-    end
+    raise InvalidRequestError, "Language and Country Filters are required." unless lang_code.present? && country.present?
 
     language = find_language!(lang_code)
 
@@ -28,10 +25,7 @@ class ResourcesPersonalizationController < ApplicationController
     lang_code = params.dig(:filter, :lang)
     country = params.dig(:filter, :country)
 
-    unless lang_code.present? && country.present?
-      return render json: {errors: [{detail: "Error: Language and Country Filters are required."}]},
-        status: :bad_request
-    end
+    raise InvalidRequestError, "Language and Country Filters are required." unless lang_code.present? && country.present?
 
     language = find_language!(lang_code)
 
@@ -45,10 +39,7 @@ class ResourcesPersonalizationController < ApplicationController
   def default_order
     lang = params.dig(:filter, :lang)
 
-    unless lang.present?
-      return render json: {errors: [{detail: "Error: Language Filter is required."}]},
-        status: :bad_request
-    end
+    raise InvalidRequestError, "Language Filter is required." unless lang.present?
 
     language = find_language!(lang)
 

@@ -45,26 +45,26 @@ resource "ResourcesPersonalization" do
     end
 
     context "with missing required filters" do
-      it "returns bad request when both lang and country are missing" do
+      it "returns unprocessable content when both lang and country are missing" do
         do_request
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
 
-      it "returns bad request when country is missing" do
+      it "returns unprocessable content when country is missing" do
         do_request filter: {lang: "en"}
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
 
-      it "returns bad request when lang is missing" do
+      it "returns unprocessable content when lang is missing" do
         do_request filter: {country: "us"}
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
@@ -179,26 +179,26 @@ resource "ResourcesPersonalization" do
     end
 
     context "with missing required filters" do
-      it "returns bad request when both lang and country are missing" do
+      it "returns unprocessable content when both lang and country are missing" do
         do_request
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
 
-      it "returns bad request when country is missing" do
+      it "returns unprocessable content when country is missing" do
         do_request filter: {lang: "en"}
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
 
-      it "returns bad request when lang is missing" do
+      it "returns unprocessable content when lang is missing" do
         do_request filter: {country: "us"}
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language and Country Filters are required.")
       end
@@ -254,10 +254,10 @@ resource "ResourcesPersonalization" do
     end
 
     context "with missing required filters" do
-      it "returns bad request when lang is missing" do
+      it "returns unprocessable content when lang is missing" do
         do_request
 
-        expect(status).to be(400)
+        expect(status).to be(422)
         json = JSON.parse(response_body)
         expect(json["errors"].first["detail"]).to include("Language Filter is required.")
       end
