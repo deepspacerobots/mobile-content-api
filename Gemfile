@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 source "https://rubygems.org"
-source "https://gems.contribsys.com/" do
-  gem "sidekiq-pro"
+# Sidekiq Pro requires credentials for gems.contribsys.com. Local development
+# without those credentials can bundle against Gemfile.oss instead, which sets
+# SIDEKIQ_OSS=true and falls back to open-source Sidekiq.
+unless ENV["SIDEKIQ_OSS"] == "true"
+  source "https://gems.contribsys.com/" do
+    gem "sidekiq-pro"
+  end
 end
 
 ruby file: ".ruby-version"

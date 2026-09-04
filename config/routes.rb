@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
-require "sidekiq/pro/web"
+begin
+  require "sidekiq/pro/web"
+rescue LoadError
+  require "sidekiq/web" # open-source Sidekiq (no Pro credentials available)
+end
 
 Rails.application.routes.draw do
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
