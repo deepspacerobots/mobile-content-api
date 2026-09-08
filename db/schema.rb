@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_24_224217) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_08_205228) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -188,6 +188,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_224217) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "language_id"
+    t.index ["language_id"], name: "index_resource_default_orders_on_language_id"
     t.index ["resource_id", "language_id"], name: "index_resource_default_orders_on_resource_id_and_language_id", unique: true
     t.index ["resource_id"], name: "index_resource_default_orders_on_resource_id"
   end
@@ -203,6 +204,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_224217) do
     t.datetime "updated_at", null: false
     t.integer "featured_order"
     t.integer "language_id"
+    t.index ["language_id", "country"], name: "index_resource_scores_on_language_id_and_country"
     t.index ["resource_id", "language_id", "country"], name: "idx_on_resource_id_language_id_country_2842b155a9", unique: true
     t.index ["resource_id"], name: "index_resource_scores_on_resource_id"
   end
