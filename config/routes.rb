@@ -93,6 +93,7 @@ Rails.application.routes.draw do
   patch "user/me/counters/:id", to: "user_counters#update" # Legacy route for GodTools Android v6.0.1+
   get "users/:user_id/counters", to: "user_counters#index"
   patch "users/:user_id/counters/:id", to: "user_counters#update"
+  get "users", to: "users#index"
   get "users/:id", to: "users#show"
   delete "users/:id", to: "users#destroy"
   patch "users/:id", to: "users#update"

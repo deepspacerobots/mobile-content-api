@@ -3,7 +3,9 @@
 class ResourceScore < ApplicationRecord
   include CountryCodes
 
-  MAX_FEATURED_ORDER_POSITION = 9
+  # Three slots per country, language and resource type, enforced here so the
+  # rule holds for every client rather than just the admin UI.
+  MAX_FEATURED_ORDER_POSITION = 3
   MAX_SCORE = 20
   belongs_to :resource
   belongs_to :language

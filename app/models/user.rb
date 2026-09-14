@@ -16,7 +16,15 @@ class User < ApplicationRecord
   # Grants nested by country, the shape the admin UI reads and writes:
   #   {"mx" => ["es"], "us" => ["en", "es"], "vn" => ["*"]}
   def resource_score_grants
-    resource_score_permissions.includes(:language).each_with_object({}) do |permission, grants|
+    # includes() re-queries even when the association is already loaded, which
+    # would make users#index an N+1, so only reach for it when not preloaded.
+    permissions = if resource_score_permissions.loaded?
+      resource_score_permissions
+    else
+      resource_score_permissions.includes(:language)
+    end
+
+    permissions.each_with_object({}) do |permission, grants|
       code = permission.language&.code || ResourceScorePermission::ALL_LANGUAGES
       (grants[permission.country] ||= []) << code
     end
